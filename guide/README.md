@@ -3,9 +3,10 @@
 
 - **[Introduction](#introduction):** [Read This](#read-this) · [Mental Model for Go](#mental-model-for-go) · Profiling vs Tracing
 - **Use Cases:** Reduce Costs · Reduce Latency · Memory Leaks · Program Hanging · Outages
-- **Go Profilers**: CPU · Memory · Block · Mutex · Goroutine · ThreadCreate
+- **Go Profilers**: [CPU](#cpu) · Memory · Block · Mutex · Goroutine · [ThreadCreate](#threadcreate)
 - **Viewing Profiles**: Command Line · Flamegraph · Webgraph
 - **Go Execution Tracer:** Timeline View · Derive Profiles
+- **Go Metrics:**  MemStats
 - **Other Tools:** time · perf · bpftrace
 - **Advanced Topics:** Assembly · Stack Traces
 - **Datadog Products:** Continuous Profiler · APM (Distributed Tracing)
@@ -127,6 +128,17 @@ Generally speaking the costs of GC is proportional to the amount of heap allocat
 
 As with the previous mental model in this guide, everything above is an extremely simplified view of reality. But hopefully it will be good enough to make sense out of the remainder of this guide, and inspire you to read more articles on the subject. One article you should definitely read is [Getting to Go: The Journey of Go's Garbage Collector](https://go.dev/blog/ismmkeynote) which gives you a good idea of how Go's GC has advanced over the years, and the pace at which it is improving.
 
+# Go Profilers
+## CPU
+
+The cpu profile can help you identify which parts of your code base consume a lot of CPU time.
+
+⚠️ Please note that CPU time is very different from the real time experienced as latency by your users. For example a typical http request might take 100ms to complete, but only consume 5ms of CPU time and spend 95ms waiting on a database. It's also possible for a request to take 100ms, but spend 200ms of CPU if two goroutines are performing CPU intensive work in parallel. If this is confusing to you, please refer to the [Mental Model for Go section](#mental-model-for-go).
+
+## ThreadCreate
+
+🐞 The threadcreate profile is intended to show stack traces that led to the creation of new OS threads. However, it's been [broken since 2013](https://github.com/golang/go/issues/6104), so you should stay away from it.
+
 # Disclaimers
 
 I'm [felixge](https://github.com/felixge) and work at [Datadog](https://www.datadoghq.com/) on [Continuous Profiling](https://www.datadoghq.com/product/code-profiling/) for Go. You should check it out. We're also [hiring](https://www.datadoghq.com/jobs-engineering/#all&all_locations) : ).
@@ -140,5 +152,6 @@ Notes:
 - GC Cost: O(N) with regards to live allocations on the heap containing pointers.
 - Each pointer slot in an allocation has a cost! Even nil pointers.
 - Reducing Costs: Talk about CPU, Memory and Networking. Is it possible to profile the latter?
+- pprof: Maybe host a service to convert perf.data files into pprof files?
 
 -->
