@@ -11,7 +11,7 @@
 - **Advanced Topics:** Assembly · Stack Traces · Little's Law
 - **Datadog Products:** Continuous Profiler · APM (Distributed Tracing) · Metrics
 
-🚧 This document is a work in progress. All sections above will become clickable links over time. Follow me [on twitter](https://twitter.com/felixge) for updates.
+🚧 This document is a work in progress. All sections above will become clickable links over time. The best way to find out about updates is to follow me and [my thread on twitter](https://twitter.com/felixge/status/1435537024388304900) where I'll announce new sections being added.
 
 # Introduction
 
