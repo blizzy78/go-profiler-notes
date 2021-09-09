@@ -178,7 +178,7 @@ The resulting profile will include a new label column and might look something l
 
 Viewing the same profile with pprof's Graph view will also include the labels:
 
-<img src="./go-profiler-labels.png" width=400/>
+<img src="./cpu-profiler-labels.png" width=400/>
 
 How you use these labels is up to you. You might include things such as `user ids`, `request ids`, `http endpoints`, `subscription plan` or other data that can allow you to get a better understanding of what types of requests are causing high CPU utilization, even when they are being processed by the same code paths.
 ### Known Issues
