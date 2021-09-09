@@ -3,7 +3,7 @@
 
 - **[Introduction](#introduction):** [Read This](#read-this) · [Mental Model for Go](#mental-model-for-go) · Profiling vs Tracing
 - **Use Cases:** Reduce Costs · Reduce Latency · Memory Leaks · Program Hanging · Outages
-- **Go Profilers**: [CPU](#cpu) · Memory · Block · Mutex · Goroutine · [ThreadCreate](#threadcreate)
+- **Go Profilers**: [CPU](#cpu-profiler) · Memory · Block · Mutex · Goroutine · [ThreadCreate](#threadcreate)
 - **Viewing Profiles**: Command Line · Flamegraph · Webgraph
 - **Go Execution Tracer:** Timeline View · Derive Profiles
 - **Go Metrics:**  MemStats
@@ -129,11 +129,17 @@ Generally speaking the costs of GC is proportional to the amount of heap allocat
 As with the previous mental model in this guide, everything above is an extremely simplified view of reality. But hopefully it will be good enough to make sense out of the remainder of this guide, and inspire you to read more articles on the subject. One article you should definitely read is [Getting to Go: The Journey of Go's Garbage Collector](https://go.dev/blog/ismmkeynote) which gives you a good idea of how Go's GC has advanced over the years, and the pace at which it is improving.
 
 # Go Profilers
-## CPU
+## CPU Profiler
 
-The cpu profile can help you identify which parts of your code base consume a lot of CPU time.
+Go's cpu profiler can help you identify which parts of your code base consume a lot of CPU time.
 
-⚠️ Please note that CPU time is very different from the real time experienced as latency by your users. For example a typical http request might take 100ms to complete, but only consume 5ms of CPU time and spend 95ms waiting on a database. It's also possible for a request to take 100ms, but spend 200ms of CPU if two goroutines are performing CPU intensive work in parallel. If this is confusing to you, please refer to the [Mental Model for Go section](#mental-model-for-go).
+⚠️ Please note that CPU time is usually different from the real time experienced as latency by your users. For example a typical http request might take `100ms` to complete, but only consume `5ms` of CPU time and spend `95ms` waiting on a database. It's also possible for a request to take `100ms`, but spend `200ms` of CPU if two goroutines are performing CPU intensive work in parallel. If this is confusing to you, please refer to the [Mental Model for Go section](#mental-model-for-go).
+
+You can enable the cpu profiler via various APIs:
+
+- `go test -cpuprofile cpu.pprof` will run your tests and write a CPU profile to a file named `cpu.pprof`.
+- [`pprof.StartCPUProfile(w)`](https://pkg.go.dev/runtime/pprof#StartCPUProfile) will capture a CPU profile to `w` until [`pprof.StopCPUProfile()`](https://pkg.go.dev/runtime/pprof#StopCPUProfile) is called.
+- [`import _ "net/http/pprof"`](https://pkg.go.dev/net/http/pprof) allows you to request a 30s CPU profile by hitting the `GET /debug/pprof/profile?seconds=30` of the default http server that you can start via `http.ListenAndServe("localhost:6060", nil)`.
 
 ## ThreadCreate
 
