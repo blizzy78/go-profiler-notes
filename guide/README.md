@@ -131,16 +131,31 @@ As with the previous mental model in this guide, everything above is an extremel
 # Go Profilers
 ## CPU Profiler
 
-Go's cpu profiler can help you identify which parts of your code base consume a lot of CPU time.
+Go's CPU profiler can help you identify which parts of your code base consume a lot of CPU time.
 
 ⚠️ Please note that CPU time is usually different from the real time experienced as latency by your users. For example a typical http request might take `100ms` to complete, but only consume `5ms` of CPU time and spend `95ms` waiting on a database. It's also possible for a request to take `100ms`, but spend `200ms` of CPU if two goroutines are performing CPU intensive work in parallel. If this is confusing to you, please refer to the [Mental Model for Go section](#mental-model-for-go).
 
-You can enable the cpu profiler via various APIs:
+You can enable the CPU profiler via various APIs:
 
 - `go test -cpuprofile cpu.pprof` will run your tests and write a CPU profile to a file named `cpu.pprof`.
-- [`pprof.StartCPUProfile(w)`](https://pkg.go.dev/runtime/pprof#StartCPUProfile) will capture a CPU profile to `w` until [`pprof.StopCPUProfile()`](https://pkg.go.dev/runtime/pprof#StopCPUProfile) is called.
+- [`pprof.StartCPUProfile(w)`](https://pkg.go.dev/runtime/pprof#StartCPUProfile) will capture a CPU profile to `w` that covers the time span until [`pprof.StopCPUProfile()`](https://pkg.go.dev/runtime/pprof#StopCPUProfile) is called.
 - [`import _ "net/http/pprof"`](https://pkg.go.dev/net/http/pprof) allows you to request a 30s CPU profile by hitting the `GET /debug/pprof/profile?seconds=30` of the default http server that you can start via `http.ListenAndServe("localhost:6060", nil)`.
 
+Regardless of how you activate the CPU profiler, the resulting profile will be a frequency table of stack traces formatted in the binary [pprof](../pprof.md) format. A simplified version of such a table is shown below:
+
+|stack trace|samples/count|cpu/nanoseconds|
+|-|-|-|
+|main;foo|5|50000000|
+|main;foo;bar|3|30000000|
+|main;foobar|4|40000000|
+
+The CPU profiler captures this data by asking the operating system to monitor the CPU usage of the application and sends it a `SIGPROF` signal for every `10ms` of CPU time it consumes. The OS also includes time consumed by the kernel on behalf of the application in this monitoring. Since the signal deliver rate depends on CPU consumption, it's dynamic and can be up to `N * 100Hz` where `N` is the number of logical CPU cores on the system. When a `SIGPROF` signal arrives, Go's signal handler captures a stack trace of the currently active goroutine, and increments the corresponding values in the profile. The `cpu/nanoseconds` value is currently directly derived from the sample count, so it is redundant, but convenient.
+
+🐞 A known issue on linux is that the CPU profiler struggles to achieve a sample rate beyond `250Hz`. This is usually not a problem, but can lead to bias if your CPU utilization is very spiky. For more information on this, check out this [GitHub issue](https://github.com/golang/go/issues/35057).
+
+⚠️ The maximum number of nested function calls that can be captured in stack traces by the CPU profiler is [`64`](https://sourcegraph.com/search?q=context:global+repo:github.com/golang/go+file:src/*+maxCPUProfStack+%3D&patternType=literal). If your program is using a lot of recursion or other patterns that lead to deep stack depths, your CPU profile will includes stacks that will be truncated. This means you will miss parts of the call chain that led to the function that was active at the time the sample was taken.
+
+<!-- TODO: Mention stack depth limit -->
 ## ThreadCreate
 
 🐞 The threadcreate profile is intended to show stack traces that led to the creation of new OS threads. However, it's been [broken since 2013](https://github.com/golang/go/issues/6104), so you should stay away from it.
@@ -159,5 +174,6 @@ Notes:
 - Each pointer slot in an allocation has a cost! Even nil pointers.
 - Reducing Costs: Talk about CPU, Memory and Networking. Is it possible to profile the latter?
 - pprof: Maybe host a service to convert perf.data files into pprof files?
+- Reuse cute gophers from conf talks.
 
 -->
