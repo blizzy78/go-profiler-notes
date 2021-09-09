@@ -4,12 +4,12 @@
 - **[Introduction](#introduction):** [Read This](#read-this) · [Mental Model for Go](#mental-model-for-go) · Profiling vs Tracing
 - **Use Cases:** Reduce Costs · Reduce Latency · Memory Leaks · Program Hanging · Outages
 - **Go Profilers**: [CPU](#cpu-profiler) · Memory · Block · Mutex · Goroutine · [ThreadCreate](#threadcreate)
-- **Viewing Profiles**: Command Line · Flamegraph · Webgraph
+- **Viewing Profiles**: Command Line · Flame Graph · Graph
 - **Go Execution Tracer:** Timeline View · Derive Profiles
 - **Go Metrics:**  MemStats
 - **Other Tools:** time · perf · bpftrace
-- **Advanced Topics:** Assembly · Stack Traces
-- **Datadog Products:** Continuous Profiler · APM (Distributed Tracing)
+- **Advanced Topics:** Assembly · Stack Traces · Little's Law
+- **Datadog Products:** Continuous Profiler · APM (Distributed Tracing) · Metrics
 
 🚧 This document is a work in progress. All sections above will become clickable links over time. Follow me [on twitter](https://twitter.com/felixge) for updates.
 
@@ -133,7 +133,7 @@ As with the previous mental model in this guide, everything above is an extremel
 
 Go's CPU profiler can help you identify which parts of your code base consume a lot of CPU time.
 
-⚠️ Please note that CPU time is usually different from the real time experienced as latency by your users. For example a typical http request might take `100ms` to complete, but only consume `5ms` of CPU time and spend `95ms` waiting on a database. It's also possible for a request to take `100ms`, but spend `200ms` of CPU if two goroutines are performing CPU intensive work in parallel. If this is confusing to you, please refer to the [Mental Model for Go section](#mental-model-for-go).
+⚠️ Please note that CPU time is usually different from the real time experienced as latency by your users. For example a typical http request might take `100ms` to complete, but only consume `5ms` of CPU time while waiting for `95ms` on a database. It's also possible for a request to take `100ms`, but spend `200ms` of CPU if two goroutines are performing CPU intensive work in parallel. If this is confusing to you, please refer to the [Mental Model for Go section](#mental-model-for-go).
 
 You can enable the CPU profiler via various APIs:
 
@@ -151,13 +151,44 @@ Regardless of how you activate the CPU profiler, the resulting profile will be a
 
 The CPU profiler captures this data by asking the operating system to monitor the CPU usage of the application and sends it a `SIGPROF` signal for every `10ms` of CPU time it consumes. The OS also includes time consumed by the kernel on behalf of the application in this monitoring. Since the signal deliver rate depends on CPU consumption, it's dynamic and can be up to `N * 100Hz` where `N` is the number of logical CPU cores on the system. When a `SIGPROF` signal arrives, Go's signal handler captures a stack trace of the currently active goroutine, and increments the corresponding values in the profile. The `cpu/nanoseconds` value is currently directly derived from the sample count, so it is redundant, but convenient.
 
+### Profiler Labels
+
+A cool feature of Go's CPU profiler is that you can attach arbitrary key value pairs to a goroutine. These labels will be inherited by any goroutine spawned from that goroutine and show up in the resulting profile.
+
+Let's consider the [example](./guide/cpu-profiler-labels.go) below that does some CPU `work()` on behalf of a `user`. By using the [`pprof.Labels()`](https://pkg.go.dev/runtime/pprof#Labels) and [`pprof.Do()`](https://pkg.go.dev/runtime/pprof#Do) API, we can associate the `user` with the goroutine that is executing the `work()` function. Additionally the labels are automatically inherited by any goroutine spawned within the same code block, for example the `backgroundWork()` goroutine.
+
+```go
+func work(ctx context.Context, user string) {
+	labels := pprof.Labels("user", user)
+	pprof.Do(ctx, labels, func(_ context.Context) {
+		go backgroundWork()
+		directWork()
+	})
+}
+```
+
+The resulting profile will include a new label column and might look something like this:
+
+|stack trace|label|samples/count|cpu/nanoseconds|
+|-|-|-|-|
+|main.childWork|user:bob|5|50000000|
+|main.childWork|user:alice|2|20000000|
+|main.work;main.directWork|user:bob|4|40000000|
+|main.work;main.directWork|user:alice|3|30000000|
+
+Viewing the same profile with pprof's Graph view will also include the labels:
+
+<img src="./go-profiler-labels.png" width=400/>
+
+How you use these labels is up to you. You might include things such as `user ids`, `request ids`, `http endpoints`, `subscription plan` or other data that can allow you to get a better understanding of what types of requests are causing high CPU utilization, even when they are being processed by the same code paths.
+### Known Issues
+
 There are a few known issues and limitations of the CPU profiler that you might want to be aware of:
 
 - 🐞 A known issue on linux is that the CPU profiler struggles to achieve a sample rate beyond `250Hz`. This is usually not a problem, but can lead to bias if your CPU utilization is very spiky. For more information on this, check out this [GitHub issue](https://github.com/golang/go/issues/35057).
 - ⚠️️ You can call [`runtime.SetCPUProfileRate()`](https://pkg.go.dev/runtime#SetCPUProfileRate) to adjust the CPU profiler rate before calling `runtime.StartCPUProfile()`. This will print a warning saying `runtime: cannot set cpu profile rate until previous profile has finished`. However, it still works within the limitation of the bug mentioned above. This issue was [initially raised here](https://github.com/golang/go/issues/40094), and there is an [accepted proposal for improving the API](https://github.com/golang/go/issues/42502).
 - ⚠️ The maximum number of nested function calls that can be captured in stack traces by the CPU profiler is currently [hard coded to `64`](https://sourcegraph.com/search?q=context:global+repo:github.com/golang/go+file:src/*+maxCPUProfStack+%3D&patternType=literal). If your program is using a lot of recursion or other patterns that lead to deep stack depths, your CPU profile will include stack traces that are truncated. This means you will miss parts of the call chain that led to the function that was active at the time the sample was taken.
 
-<!-- TODO: Mention stack depth limit -->
 ## ThreadCreate
 
 🐞 The threadcreate profile is intended to show stack traces that led to the creation of new OS threads. However, it's been [broken since 2013](https://github.com/golang/go/issues/6104), so you should stay away from it.
