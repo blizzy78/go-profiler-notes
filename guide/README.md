@@ -153,7 +153,7 @@ The CPU profiler captures this data by asking the operating system to monitor th
 
 🐞 A known issue on linux is that the CPU profiler struggles to achieve a sample rate beyond `250Hz`. This is usually not a problem, but can lead to bias if your CPU utilization is very spiky. For more information on this, check out this [GitHub issue](https://github.com/golang/go/issues/35057).
 
-⚠️ The maximum number of nested function calls that can be captured in stack traces by the CPU profiler is currently [`64`](https://sourcegraph.com/search?q=context:global+repo:github.com/golang/go+file:src/*+maxCPUProfStack+%3D&patternType=literal). If your program is using a lot of recursion or other patterns that lead to deep stack depths, your CPU profile will include stack traces that are truncated. This means you will miss parts of the call chain that led to the function that was active at the time the sample was taken.
+⚠️ The maximum number of nested function calls that can be captured in stack traces by the CPU profiler is currently [hard coded to `64`](https://sourcegraph.com/search?q=context:global+repo:github.com/golang/go+file:src/*+maxCPUProfStack+%3D&patternType=literal). If your program is using a lot of recursion or other patterns that lead to deep stack depths, your CPU profile will include stack traces that are truncated. This means you will miss parts of the call chain that led to the function that was active at the time the sample was taken.
 
 <!-- TODO: Mention stack depth limit -->
 ## ThreadCreate
