@@ -181,7 +181,24 @@ Viewing the same profile with pprof's Graph view will also include the labels:
 <img src="./cpu-profiler-labels.png" width=400/>
 
 How you use these labels is up to you. You might include things such as `user ids`, `request ids`, `http endpoints`, `subscription plan` or other data that can allow you to get a better understanding of what types of requests are causing high CPU utilization, even when they are being processed by the same code paths. That being said, using labels will increase the size of your pprof files. So you should probably start with low cardinality labels such as endpoints before moving on to high cardinality labels once you feel confident that they don't impact the performance of your application.
-### Known Issues
+
+### CPU Utilization
+
+Since the sample rate of the CPU profiler adapts to amount of CPU your program is consuming, you can derive the CPU utilization from CPU profiles. In fact pprof will do this automatically for you. For example the profile below was taking from a program that had an average CPU utilization of `147.77%`:
+
+```
+$ go tool pprof guide/cpu-utilization.pprof
+Type: cpu
+Time: Sep 9, 2021 at 11:34pm (CEST)
+Duration: 1.12s, Total samples = 1.65s (147.77%)
+Entering interactive mode (type "help" for commands, "o" for options)
+(pprof) 
+```
+
+Another popular way to express CPU utilization is CPU cores. In the example above the program was using an average of `1.47` CPU cores during the profiling period.
+
+⚠️ Due to one of the known issues below you shouldn't put too much trust in this number if it's near or higher than `250%`. However, if you see a very low number such as `10%` this usually indicates that CPU consumption is not an issue for your applications. A common mistake is to ignore this number and start worrying about a particular function taking up a long time relative to the rest of the profile. This is usually a waste of time when overall CPU utilization is low, as not much can be gained from optimizing this function.
+### Known CPU Profiler Issues
 
 There are a few known issues and limitations of the CPU profiler that you might want to be aware of:
 
