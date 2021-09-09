@@ -180,7 +180,7 @@ Viewing the same profile with pprof's Graph view will also include the labels:
 
 <img src="./cpu-profiler-labels.png" width=400/>
 
-How you use these labels is up to you. You might include things such as `user ids`, `request ids`, `http endpoints`, `subscription plan` or other data that can allow you to get a better understanding of what types of requests are causing high CPU utilization, even when they are being processed by the same code paths.
+How you use these labels is up to you. You might include things such as `user ids`, `request ids`, `http endpoints`, `subscription plan` or other data that can allow you to get a better understanding of what types of requests are causing high CPU utilization, even when they are being processed by the same code paths. That being said, using labels will increase the size of your pprof files. So you should probably start with low cardinality labels such as endpoints before moving on to high cardinality labels once you feel confident that they don't impact the performance of your application.
 ### Known Issues
 
 There are a few known issues and limitations of the CPU profiler that you might want to be aware of:
